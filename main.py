@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # is outside the range of std deviation, then we could arguably detected that difference and use it
     # for location
     merged_data['detectable'] = abs(merged_data['std_specific_location']*1.96 ) < abs(merged_data['difference'])
-
+    merged_data.to_csv("Position Detection G Block.csv")
 
 
     print("")
