@@ -82,4 +82,46 @@ if __name__ == '__main__':
     merged_data.to_csv("Position Detection G Block.csv")
 
 
+    # To test for detetable signal difference we must take the signal found at a location, and see if the signal difference
+    # of other locations is outside of the standard deviation of the isgnal computed at the location.
+    # if the signal is outside the standard deviation at a different location then its safe to say we could
+    # use that as a way to identify our location, however if the difference is within standard deviations of theat locations
+    # we cannot be sure its not just the noise of the signal measurements at that location.
+    detectable_signal_strength = pd.DataFrame()
+    # Pivot the dataframe to have locations as columns and average signal strengths as values
+    pivot_table = merged_data.pivot(index='macAddress', columns='location', values='mean_specific_location')
+    pivot_table2 = merged_data.pivot(index='macAddress', columns='location', values='std_specific_location')
+
+    # Iterate through each row of the pivot table
+
+    mac = []
+    loc1 = []
+    loc2 = []
+    difference = []
+    stddiff = []
+    for index, row in pivot_table.iterrows():
+        # Calculate the difference in signal strength between each pair of locations
+        for i, location1 in enumerate(pivot_table.columns):
+            for j, location2 in enumerate(pivot_table.columns):
+                if i < j:
+                    diff = row[location1] - row[location2]
+
+                    mac.append(index)
+                    loc1.append(location1)
+                    loc2.append(location2)
+                    difference.append(diff)
+
+                    std_test_location = (diff > abs(pivot_table2[location1][index]*1.96)) and (diff > abs(pivot_table2[location2][index])*1.96)
+
+                    stddiff.append(std_test_location)
+                    print(f"Difference in signal strength between {location1} and {location2} for MAC address {index}: {std_test_location}")
+    location_check = pd.DataFrame(
+        {'macAddress': mac,
+         'location1': loc1,
+         'location2': loc2,
+         'difference': difference,
+         'std_test': stddiff
+         })
+    location_check.to_csv('location_check.csv')
+
     print("")
