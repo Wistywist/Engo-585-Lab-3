@@ -122,6 +122,54 @@ if __name__ == '__main__':
          'difference': difference,
          'std_test': stddiff
          })
+
+    # This file has a mac address and shows the difference in signal between the two locations listed,
+    # a true value indicates that the difference was outside the standard deviations of either locaiton,
+    # meaning a position is noticeably different at that point, and a false value means that the difference was
+    # within a 95% confidence region and not able to be detected.
     location_check.to_csv('location_check.csv')
 
-    print("")
+
+    # Finally to test random other user data we need to first import it, which has a different order then our current data.
+
+    directory = "unknown_location"
+
+    # Initialize an empty list to store DataFrames
+    dfs = []
+
+    # Iterate through each file in the directory
+    for filename in os.listdir(directory):
+        if filename.endswith(".csv"):
+            # Construct the full path to the CSV file
+            filepath = os.path.join(directory, filename)
+
+            # Read the CSV file into a DataFrame
+            df = pd.read_csv(filepath)
+
+            # Append the DataFrame to the list
+            dfs.append(df)
+
+    # Concatenate all DataFrames in the list into a single DataFrame
+    combined_df = pd.concat(dfs, ignore_index=True)
+    combined_df.to_csv("test.csv")
+
+    # all we need to compare is the mac addresses and RSSI values
+    unknown_location = combined_df[['BSSID', "RSSI"]]
+    unknown_location.columns = ['macAddress', 'signalStrength']
+    unknown_location['macAddress'] = unknown_location['macAddress'].str.lower()
+
+    # repeating steps performed before, we can group the data by its mac addresses
+    unknown_location['truncated_mac'] = unknown_location['macAddress'].apply(lambda x: x[:-1])
+    unknown_access_point_count = unknown_location.groupby(['truncated_mac'])['signalStrength'].mean()
+
+    location_pivot_table = pd.pivot_table(wifi_data,columns=['location'],index=['truncated_mac'],values='signalStrength',aggfunc='mean')
+
+    #Upon visual inspection of MAC adrresses in the unknown location it can be seen it lacks the f4:2e mac addresses
+    # which eliminates the chance that the location is in ENE block
+
+    merged_unknown = location_pivot_table.merge(unknown_access_point_count, how='inner', left_index=True, right_index=True)
+    merged_unknown.to_csv("Unknown_data_assessment.csv")
+    # Visual inspection of the pivot table shows that the most mac address matches occur for the South end of G blocks
+    # with signal strengths varying heavily but certain low signal strengths matching with low signal strengths on our end.
+    # Unfortunately it there are still lots of matches on signals that we did not detect at the south end of the
+    # G block that were in the given dataset.
